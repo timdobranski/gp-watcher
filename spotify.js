@@ -5,9 +5,6 @@ require('dotenv').config();
 const clientId = process.env.SPOTIFY_CLIENT_ID;
 const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
-console.log('clientId:', clientId);
-console.log('clientSecret:', clientSecret);
-
 async function getSpotifyAccessToken(clientId, clientSecret) {
     const headers = {
         'Authorization': 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64'),
@@ -49,8 +46,9 @@ async function findSongOnSpotify(songName, artistName) {
       const song = await searchSpotifySong(songName, artistName, accessToken);
 
       if (song) {
-          console.log('Song found:', song);
+        //   console.log('Song found:', song);
           // Process the song information as needed
+          return song;
       } else {
           console.log('Song not found');
       }
