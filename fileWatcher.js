@@ -9,52 +9,45 @@ const deleteFile = require('./deleteFile');
 
 
 // Update this to instead just send a request to the addSong, removeSong, or updateSong endpoint in the main app
-const folderPath = path.join('/Users', 'timdobranski', 'Desktop', 'guitarProFiles');
+// const folderPath = path.join('/Users', 'timdobranski', 'Desktop', 'guitarProFiles');
 
-// on start, check all files in songs folder, and run addFile on any that aren't already in the songs table
-
-fs.watch(folderPath, { recursive: true }, async (eventType, filename) => {
+const fileHandler = async (eventType, filename, folderPath) => {
   if (filename) {
-    console.log(`${filename} has been ${eventType}`);
     const filePath = path.join(folderPath, filename);
-    const fileExists = fs.existsSync(filePath);
 
-    if (eventType === 'rename') {
-      if (fileExists) {
-        // File added
-        console.log(`Uploading ${filename} to Supabase storage and adding to songs table.`);
+    try {
+      const stats = await fs.promises.stat(filePath);
 
-        try {
-          // STEP 1/4: get gp metadata
-          const metadata = await getGuitarProMetadata(filePath);
-          // console.log('guitar pro metadata:', metadata);
+      if (stats.isFile()) {
+        console.log(`${filename} has been ${eventType}`);
 
-          // STEP 2/4: get spotify metadata
-          const spotifyMetadata = await findSongOnSpotify(metadata.title, metadata.artist);
-          console.log('spotify metadata:', spotifyMetadata);
-
-          // STEP 3 & 4/4: Add metadata to songs table and upload GP file to Supabase storage
-          addFile(filePath, filename, metadata, spotifyMetadata);
-
-          if (error) {
-            throw error;
-          }
+        if (eventType === 'rename') {
+          // File was added or updated - add to storage and songs table if not already there
+          console.log(`Uploading ${filename} to Supabase storage and adding to songs table.`);
+          await addFile(filePath, filename);
           console.log(`Entry for ${filename} added to songs table.`);
-        } catch (error) {
-          console.error(error);
+        } else if (eventType === 'change') {
+          // File modified
+          console.log(`Updating 'updated at' for ${filename} in songs table.`);
+          // Update 'updated at' in songs table
+          // Add code to update the 'updated at' field for the corresponding record
         }
-
       } else {
-        // File removed
+        console.log(`Detected change in ${filename}, but it's a directory, not a file.`);
+      }
+    } catch (error) {
+      if (eventType === 'rename' && error.code === 'ENOENT') {
+        // File was removed - delete from storage and songs table
         console.log(`Removing ${filename} from Supabase storage and songs table.`);
         deleteFile(filename);
+      } else {
+        console.error(`Error processing ${filename}:`, error);
       }
-    } else if (eventType === 'change') {
-      // File modified
-      console.log(`Updating 'updated at' for ${filename} in songs table.`);
-
-      // Update 'updated at' in songs table
-      // Add code to update the 'updated at' field for the corresponding record
     }
+  } else {
+    console.log(`Filename not provided for event type ${eventType}.`);
   }
-});
+};
+
+module.exports = fileHandler;
+

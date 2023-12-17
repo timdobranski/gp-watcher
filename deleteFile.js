@@ -1,6 +1,7 @@
 const supabase = require('./supabase');
 
 const deleteFile = async (filename) => {
+  console.log('inside deleteFile, filename: ', filename);
   // STEP 1: Remove file from Supabase storage
   try {
     const { data: removeData, error: removeError } = await supabase.storage
